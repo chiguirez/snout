@@ -18,6 +18,7 @@ func main() {
 		if err != context.Canceled {
 			panic(err)
 		}
+	}
 }
 
 type Config struct {
@@ -27,8 +28,7 @@ type Config struct {
 		Topic         string `mapstructure:"topic"`
 	} `mapstructure:"kafka"`
 	App struct {
-		UnmatchedKeyValue string `mapstructure:"unmatched_key_value"`
-		RetryAttempts     int    `mapstructure:"retry_attempts"`
+		//...
 	} `mapstructure:"app"`
 }
 
