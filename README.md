@@ -32,7 +32,7 @@ type Config struct {
 	} `mapstructure:"app"`
 }
 
-func Run(ctx context.Context, cfg Config, logger *zap.Logger) error{
+func Run(ctx context.Context, cfg Config) error{
   //
   // ..  
   //

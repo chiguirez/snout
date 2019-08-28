@@ -12,35 +12,12 @@ import (
 	"github.com/octago/sflags"
 	"github.com/spf13/pflag"
 
-	"github.com/bearcherian/rollzap"
 	"github.com/octago/sflags/gen/gpflag"
-	"github.com/rollbar/rollbar-go"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 type Kernel struct {
-	RunE   interface{}
-	logger *zap.Logger
-}
-
-func WithRollBarLogger(token string, environment string, githubPath string) Options {
-	return func(kernel *Kernel) {
-
-		rollbar.SetToken(token)
-		rollbar.SetEnvironment(environment)
-		rollbar.SetServerRoot(githubPath)
-		rollbar.SetCodeVersion("v0.0.1")
-
-		rollbarCore := rollzap.NewRollbarCore(zapcore.ErrorLevel)
-
-		logger, _ := zap.NewProduction(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
-			return zapcore.NewTee(core, rollbarCore)
-		}))
-
-		kernel.logger = logger
-	}
+	RunE interface{}
 }
 
 type Options func(kernel *Kernel)
@@ -55,11 +32,7 @@ func (k *Kernel) Bootstrap(name string, cfg interface{}, opts ...Options) kernel
 		o(k)
 	}
 
-	if k.logger == nil {
-		k.logger, _ = zap.NewProduction()
-	}
-
-	return kernelBootstrap{ctx, cfg, k.logger, k.RunE}
+	return kernelBootstrap{ctx, cfg, k.RunE}
 }
 
 func (k Kernel) varFetching(name string, cfg interface{}) {
@@ -96,9 +69,8 @@ func (k Kernel) Signalling() context.Context {
 
 type kernelBootstrap struct {
 	context.Context
-	cfg    interface{}
-	logger *zap.Logger
-	runE   interface{}
+	cfg  interface{}
+	runE interface{}
 }
 
 func (kb kernelBootstrap) Initialize() error {
@@ -109,7 +81,6 @@ func (kb kernelBootstrap) Initialize() error {
 	var In []reflect.Value
 	In = append(In, reflect.ValueOf(kb.Context))
 	In = append(In, reflect.ValueOf(kb.cfg).Elem())
-	In = append(In, reflect.ValueOf(kb.logger))
 
 	call := reflect.ValueOf(kb.runE).Call(In)
 	return call[0].Interface().(error)
