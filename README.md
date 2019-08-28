@@ -7,7 +7,7 @@ Entry point or bootstrap for MS build on GO, it handles Signalling, loggers and 
 
 
 func main() {
-	kernel := bootstrap.Kernel{
+	kernel := snout.Kernel{
 		RunE: Run,
 	}
 	kernelBootstrap := kernel.Bootstrap(
