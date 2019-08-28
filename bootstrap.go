@@ -83,5 +83,10 @@ func (kb kernelBootstrap) Initialize() error {
 	In = append(In, reflect.ValueOf(kb.cfg).Elem())
 
 	call := reflect.ValueOf(kb.runE).Call(In)
-	return call[0].Interface().(error)
+	err, ok := call[0].Interface().(error)
+	if !ok {
+		return nil
+	}
+
+	return err
 }
