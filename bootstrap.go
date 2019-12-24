@@ -22,9 +22,9 @@ type Kernel struct {
 
 type Options func(kernel *Kernel)
 
-func (k *Kernel) Bootstrap(name string, cfg interface{}, opts ...Options) kernelBootstrap {
+func (k *Kernel) Bootstrap(name string, cfg interface{}, usrCtx *context.Context, opts ...Options) kernelBootstrap {
 
-	ctx := k.signalling()
+	ctx := k.signalling(usrCtx)
 
 	k.varFetching(name, cfg)
 
@@ -55,8 +55,15 @@ func (k Kernel) varFetching(name string, cfg interface{}) {
 	}
 }
 
-func (k Kernel) signalling() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
+func (k Kernel) signalling(usrCtx *context.Context) context.Context {
+	var cancel context.CancelFunc
+	var ctx context.Context
+
+	if usrCtx == nil {
+		ctx, cancel = context.WithCancel(context.Background())
+		usrCtx = &ctx
+	}
+
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
@@ -64,13 +71,14 @@ func (k Kernel) signalling() context.Context {
 		signal.Stop(ch)
 		cancel()
 	}()
-	return ctx
+
+	return *usrCtx
 }
 
 type kernelBootstrap struct {
 	context context.Context
-	cfg  interface{}
-	runE interface{}
+	cfg     interface{}
+	runE    interface{}
 }
 
 func (kb kernelBootstrap) Initialize() error {
