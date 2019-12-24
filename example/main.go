@@ -15,6 +15,7 @@ func main() {
 	kernelBootstrap := kernel.Bootstrap(
 		"agent",
 		&Config{},
+		nil,
 	)
 	if err := kernelBootstrap.Initialize(); err != nil {
 		if err != context.Canceled {
