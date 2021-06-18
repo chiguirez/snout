@@ -3,16 +3,15 @@ package snout
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/signal"
 	"reflect"
 	"strings"
 	"syscall"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/octago/sflags"
-	"github.com/spf13/pflag"
-
 	"github.com/octago/sflags/gen/gpflag"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -20,25 +19,70 @@ type Kernel struct {
 	RunE interface{}
 }
 
-type Options func(kernel *Kernel)
+type env struct {
+	VarFile    string
+	VarsPrefix string
+}
 
-func (k *Kernel) Bootstrap(name string, cfg interface{}, opts ...Options) kernelBootstrap {
-	ctx := k.signalling()
+type kernelOptions struct {
+	ServiceName string
+	Env         env
+}
 
-	k.varFetching(name, cfg)
-
-	for _, o := range opts {
-		o(k)
+func newKernelOptions() *kernelOptions {
+	return &kernelOptions{
+		ServiceName: "",
+		Env: env{
+			VarFile:    ".",
+			VarsPrefix: "",
+		},
 	}
+}
+
+// WithServiceName creates a profile based on the service name to look up for envVar files
+func WithServiceName(name string) Options {
+	return func(kernel *kernelOptions) {
+		kernel.ServiceName = name
+	}
+}
+
+// WithEnvVarPrefix strips any prefix from os EnvVars to map it into Config struct.
+func WithEnvVarPrefix(prefix string) Options {
+	return func(kernel *kernelOptions) {
+		kernel.Env.VarsPrefix = prefix
+	}
+}
+
+// WithEnvVarFolderLocation Specify where to look up form the env var file.
+func WithEnvVarFolderLocation(folderLocation string) Options {
+	return func(kernel *kernelOptions) {
+		kernel.Env.VarFile = folderLocation
+	}
+}
+
+type Options func(kernel *kernelOptions)
+
+// Bootstrap service creating a Ctx with Signalling and fetching EnvVars from
+// env, ymal or json file, or straight from envVars from the OS.
+func (k *Kernel) Bootstrap(cfg interface{}, opts ...Options) kernelBootstrap {
+	krnlOpt := newKernelOptions()
+	for _, o := range opts {
+		o(krnlOpt)
+	}
+
+	ctx := k.getSignallingContext()
+
+	k.varFetching(cfg, krnlOpt)
 
 	return kernelBootstrap{ctx, cfg, k.RunE}
 }
 
-func (k Kernel) varFetching(name string, cfg interface{}) {
+func (k Kernel) varFetching(cfg interface{}, options *kernelOptions) {
+	viper.SetEnvPrefix(options.Env.VarsPrefix)
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	flagSet := pflag.NewFlagSet(name, pflag.ContinueOnError)
+	flagSet := pflag.NewFlagSet(options.ServiceName, pflag.ContinueOnError)
 
 	if err := gpflag.ParseTo(cfg, flagSet, sflags.FlagDivider("."), sflags.FlagTag("snout")); err != nil {
 		panic(err)
@@ -48,29 +92,59 @@ func (k Kernel) varFetching(name string, cfg interface{}) {
 		panic(err)
 	}
 
-	viper.SetConfigName(name)
-	viper.AddConfigPath(".")
+	viper.SetConfigName(options.ServiceName)
+	viper.AddConfigPath(options.Env.VarFile)
 
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Printf("Using config file: %s \n", viper.ConfigFileUsed())
 	}
 
-	if err := viper.Unmarshal(cfg); err != nil {
+	setDefaultValues(reflect.TypeOf(cfg).Elem(), "")
+
+	if err := viper.Unmarshal(cfg, unmarshalWithStructTag("snout")); err != nil {
 		panic(err)
 	}
 }
 
-func (k Kernel) signalling() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
-	ch := make(chan os.Signal, 1)
+func setDefaultValues(p reflect.Type, path string) {
+	for i := 0; i < p.NumField(); i++ {
+		field := p.Field(i)
 
-	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
+		PathMap := map[bool]string{
+			true:  strings.ToUpper(fmt.Sprintf("%s.%s", path, field.Tag.Get("snout"))),
+			false: strings.ToUpper(field.Tag.Get("snout")),
+		}
 
-	go func() {
-		<-ch
-		signal.Stop(ch)
-		cancel()
-	}()
+		finalPath := PathMap[path != ""]
+
+		var typ reflect.Type
+
+		switch field.Type.Kind() {
+		case reflect.Ptr:
+			typ = field.Type.Elem()
+		default:
+			typ = field.Type
+		}
+
+		if typ.Kind() != reflect.Struct {
+			get := field.Tag.Get("default")
+			viper.SetDefault(finalPath, get)
+
+			continue
+		}
+
+		setDefaultValues(typ, finalPath)
+	}
+}
+
+func unmarshalWithStructTag(tag string) viper.DecoderConfigOption {
+	return func(config *mapstructure.DecoderConfig) {
+		config.TagName = tag
+	}
+}
+
+func (k Kernel) getSignallingContext() context.Context {
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 
 	return ctx
 }
@@ -81,6 +155,7 @@ type kernelBootstrap struct {
 	runE    interface{}
 }
 
+// Initialize Runs the Bootstrapped service
 func (kb kernelBootstrap) Initialize() error {
 	typeOf := reflect.TypeOf(kb.runE)
 	if typeOf.Kind() != reflect.Func {
