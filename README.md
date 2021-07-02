@@ -1,5 +1,5 @@
-# snout
-Entry point or bootstrap for MS built on GO, it handles Signalling, loggers and config vars and envVars
+# snout [![Go Reference](https://pkg.go.dev/badge/github.com/chiguirez/snout.svg)](https://pkg.go.dev/github.com/chiguirez/snout)
+Bootstrap package for building Services in Go, Handle Signaling and Config coming from env, yaml or json files as well as envVars
 
 ## Example
 
