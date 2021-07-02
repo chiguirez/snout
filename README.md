@@ -11,8 +11,7 @@ func main() {
 		RunE: Run,
 	}
 	kernelBootstrap := kernel.Bootstrap(
-		"agent",
-		&Config{},
+		new(Config),
 	)
 	if err := kernelBootstrap.Initialize(); err != nil {
 		if err != context.Canceled {
@@ -23,13 +22,13 @@ func main() {
 
 type Config struct {
 	Kafka struct {
-		BrokerAddress string `mapstructure:"broker_address"`
-		ConsumerGroup string `mapstructure:"consumer_group"`
-		Topic         string `mapstructure:"topic"`
-	} `mapstructure:"kafka"`
+		BrokerAddress string `snout:"broker_address"`
+		ConsumerGroup string `snout:"consumer_group"`
+		Topic         string `snout:"topic"`
+	} `snout:"kafka"`
 	App struct {
 		//...
-	} `mapstructure:"app"`
+	} `snout:"app"`
 }
 
 func Run(ctx context.Context, cfg Config) error{
