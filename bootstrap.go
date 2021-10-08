@@ -147,7 +147,13 @@ func unmarshalWithStructTag(tag string) viper.DecoderConfigOption {
 
 func customUnMarshallerHookFunc(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
 	if t.String() == "time.Duration" && f.Kind() == reflect.String {
-		return time.ParseDuration(data.(string))
+		var s string
+
+		if s = data.(string); s == "" {
+			s = "0s"
+		}
+
+		return time.ParseDuration(s)
 	}
 
 	return data, nil
