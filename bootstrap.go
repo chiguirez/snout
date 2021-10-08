@@ -155,12 +155,28 @@ type kernelBootstrap struct {
 	runE    interface{}
 }
 
+var ErrPanic = fmt.Errorf("panic:")
+
 // Initialize Runs the Bootstrapped service
-func (kb kernelBootstrap) Initialize() error {
+func (kb kernelBootstrap) Initialize()  (err error) {
 	typeOf := reflect.TypeOf(kb.runE)
 	if typeOf.Kind() != reflect.Func {
 		return fmt.Errorf("%s is not a reflect.Func", reflect.TypeOf(kb.runE))
 	}
+
+	defer func() {
+		if r:=recover(); r != nil {
+			switch pErr := r.(type) {
+			case string:
+				err = fmt.Errorf("%w:%s",ErrPanic,pErr)
+			case error:
+				err = fmt.Errorf("%w:%v",ErrPanic,pErr)
+			default:
+				err = fmt.Errorf("%w:%+v",ErrPanic,pErr)
+			}
+			return
+		}
+	}()
 
 	var In []reflect.Value
 	In = append(In, reflect.ValueOf(kb.context))

@@ -2,6 +2,7 @@ package snout_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -48,6 +49,93 @@ func (s *snoutSuite) TestDefaultTags() {
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
 				s.Require().Equal(false, *config.D.C)
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestErrPanic() {
+	s.Run("Given a config Struct with snout tags and default values", func() {
+		type stubConfig struct {
+			A string `snout:"a" default:"a"`
+			B int    `snout:"b" default:"1"`
+			C bool   `snout:"c" default:"true"`
+			D *struct {
+				A *string  `snout:"a" default:"da"`
+				B *float64 `snout:"b" default:"3.1415"`
+				C *bool    `snout:"c" default:"false"`
+			} `snout:"d"`
+		}
+
+		s.Run("When Kernel Initialized", func() {
+			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+				panic(fmt.Errorf("/!\\"))
+			}}
+
+			err := kernel.Bootstrap(new(stubConfig)).Initialize()
+
+			s.Run("Then all values are present", func() {
+				s.Require().Error(err)
+				s.Require().ErrorIs(err,snout.ErrPanic)
+
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestStringPanic() {
+	s.Run("Given a config Struct with snout tags and default values", func() {
+		type stubConfig struct {
+			A string `snout:"a" default:"a"`
+			B int    `snout:"b" default:"1"`
+			C bool   `snout:"c" default:"true"`
+			D *struct {
+				A *string  `snout:"a" default:"da"`
+				B *float64 `snout:"b" default:"3.1415"`
+				C *bool    `snout:"c" default:"false"`
+			} `snout:"d"`
+		}
+
+		s.Run("When Kernel Initialized", func() {
+			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+				panic("/!\\")
+			}}
+
+			err := kernel.Bootstrap(new(stubConfig)).Initialize()
+
+			s.Run("Then all values are present", func() {
+				s.Require().Error(err)
+				s.Require().ErrorIs(err,snout.ErrPanic)
+
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestAnyPanic() {
+	s.Run("Given a config Struct with snout tags and default values", func() {
+		type stubConfig struct {
+			A string `snout:"a" default:"a"`
+			B int    `snout:"b" default:"1"`
+			C bool   `snout:"c" default:"true"`
+			D *struct {
+				A *string  `snout:"a" default:"da"`
+				B *float64 `snout:"b" default:"3.1415"`
+				C *bool    `snout:"c" default:"false"`
+			} `snout:"d"`
+		}
+
+		s.Run("When Kernel Initialized", func() {
+			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+				panic(false)
+			}}
+
+			err := kernel.Bootstrap(new(stubConfig)).Initialize()
+
+			s.Run("Then all values are present", func() {
+				s.Require().Error(err)
+				s.Require().ErrorIs(err,snout.ErrPanic)
+
 			})
 		})
 	})
