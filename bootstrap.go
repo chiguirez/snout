@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/octago/sflags"
@@ -140,7 +141,16 @@ func setDefaultValues(p reflect.Type, path string) {
 func unmarshalWithStructTag(tag string) viper.DecoderConfigOption {
 	return func(config *mapstructure.DecoderConfig) {
 		config.TagName = tag
+		config.DecodeHook = mapstructure.ComposeDecodeHookFunc(customUnMarshallerHookFunc)
 	}
+}
+
+func customUnMarshallerHookFunc(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+	if t.String() == "time.Duration" && f.Kind() == reflect.String {
+		return time.ParseDuration(data.(string))
+	}
+
+	return data, nil
 }
 
 func signallingContext(ctx context.Context) context.Context {
@@ -158,21 +168,21 @@ type kernelBootstrap struct {
 var ErrPanic = fmt.Errorf("panic:")
 
 // Initialize Runs the Bootstrapped service
-func (kb kernelBootstrap) Initialize()  (err error) {
+func (kb kernelBootstrap) Initialize() (err error) {
 	typeOf := reflect.TypeOf(kb.runE)
 	if typeOf.Kind() != reflect.Func {
 		return fmt.Errorf("%s is not a reflect.Func", reflect.TypeOf(kb.runE))
 	}
 
 	defer func() {
-		if r:=recover(); r != nil {
+		if r := recover(); r != nil {
 			switch pErr := r.(type) {
 			case string:
-				err = fmt.Errorf("%w:%s",ErrPanic,pErr)
+				err = fmt.Errorf("%w:%s", ErrPanic, pErr)
 			case error:
-				err = fmt.Errorf("%w:%v",ErrPanic,pErr)
+				err = fmt.Errorf("%w:%v", ErrPanic, pErr)
 			default:
-				err = fmt.Errorf("%w:%+v",ErrPanic,pErr)
+				err = fmt.Errorf("%w:%+v", ErrPanic, pErr)
 			}
 			return
 		}

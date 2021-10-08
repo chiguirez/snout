@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/chiguirez/snout/v2"
 	"github.com/stretchr/testify/suite"
@@ -76,7 +77,7 @@ func (s *snoutSuite) TestErrPanic() {
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
-				s.Require().ErrorIs(err,snout.ErrPanic)
+				s.Require().ErrorIs(err, snout.ErrPanic)
 
 			})
 		})
@@ -105,7 +106,7 @@ func (s *snoutSuite) TestStringPanic() {
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
-				s.Require().ErrorIs(err,snout.ErrPanic)
+				s.Require().ErrorIs(err, snout.ErrPanic)
 
 			})
 		})
@@ -134,14 +135,14 @@ func (s *snoutSuite) TestAnyPanic() {
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
-				s.Require().ErrorIs(err,snout.ErrPanic)
+				s.Require().ErrorIs(err, snout.ErrPanic)
 
 			})
 		})
 	})
 }
 
-func (s *snoutSuite) TestYAMLFile() {
+func (s *snoutSuite) TestENVFile() {
 	s.Run("Given a config Struct with snout tags YAML file", func() {
 		type stubConfig struct {
 			A string `snout:"a"`
@@ -152,6 +153,7 @@ func (s *snoutSuite) TestYAMLFile() {
 				B *float64 `snout:"b"`
 				C *bool    `snout:"c"`
 			} `snout:"d"`
+			E time.Duration `snout:"e"`
 		}
 
 		s.Run("When Kernel is Initialized", func() {
@@ -177,12 +179,13 @@ func (s *snoutSuite) TestYAMLFile() {
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
 				s.Require().Equal(false, *config.D.C)
+				s.Require().Equal(30*time.Minute, config.E)
 			})
 		})
 	})
 }
 
-func (s *snoutSuite) TestENVFile() {
+func (s *snoutSuite) TestYAMLFile() {
 	s.Run("Given a config Struct with snout tags and ENV file", func() {
 		type stubConfig struct {
 			A string `snout:"a"`
@@ -193,6 +196,7 @@ func (s *snoutSuite) TestENVFile() {
 				B *float64 `snout:"b"`
 				C *bool    `snout:"c"`
 			} `snout:"d"`
+			E time.Duration `snout:"e"`
 		}
 
 		s.Run("When Kernel is Initialized", func() {
@@ -218,6 +222,7 @@ func (s *snoutSuite) TestENVFile() {
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
 				s.Require().Equal(false, *config.D.C)
+				s.Require().Equal(30*time.Minute, config.E)
 			})
 		})
 	})
@@ -234,6 +239,7 @@ func (s *snoutSuite) TestJSONFile() {
 				B *float64 `snout:"b"`
 				C *bool    `snout:"c"`
 			} `snout:"d"`
+			E time.Duration `snout:"e"`
 		}
 
 		s.Run("When Kernel is Initialized", func() {
@@ -259,6 +265,7 @@ func (s *snoutSuite) TestJSONFile() {
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
 				s.Require().Equal(false, *config.D.C)
+				s.Require().Equal(30*time.Minute, config.E)
 			})
 		})
 	})
