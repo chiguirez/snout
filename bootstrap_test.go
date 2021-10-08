@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/chiguirez/snout"
+	"github.com/chiguirez/snout/v2"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -39,7 +39,7 @@ func (s *snoutSuite) TestDefaultTags() {
 				return nil
 			}}
 
-			_ = kernel.Bootstrap(new(stubConfig)).Initialize()
+			_ = kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
 
 			s.Run("Then all values are present", func() {
 				config := <-cfgChan
@@ -72,7 +72,7 @@ func (s *snoutSuite) TestErrPanic() {
 				panic(fmt.Errorf("/!\\"))
 			}}
 
-			err := kernel.Bootstrap(new(stubConfig)).Initialize()
+			err := kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
@@ -101,7 +101,7 @@ func (s *snoutSuite) TestStringPanic() {
 				panic("/!\\")
 			}}
 
-			err := kernel.Bootstrap(new(stubConfig)).Initialize()
+			err := kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
@@ -130,7 +130,7 @@ func (s *snoutSuite) TestAnyPanic() {
 				panic(false)
 			}}
 
-			err := kernel.Bootstrap(new(stubConfig)).Initialize()
+			err := kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
@@ -163,6 +163,7 @@ func (s *snoutSuite) TestYAMLFile() {
 			}}
 
 			_ = kernel.Bootstrap(
+				context.TODO(),
 				new(stubConfig),
 				snout.WithServiceName("ENV"),
 				snout.WithEnvVarFolderLocation("./testdata/"),
@@ -203,6 +204,7 @@ func (s *snoutSuite) TestENVFile() {
 			}}
 
 			_ = kernel.Bootstrap(
+				context.TODO(),
 				new(stubConfig),
 				snout.WithServiceName("YAML"),
 				snout.WithEnvVarFolderLocation("./testdata/"),
@@ -243,6 +245,7 @@ func (s *snoutSuite) TestJSONFile() {
 			}}
 
 			_ = kernel.Bootstrap(
+				context.TODO(),
 				new(stubConfig),
 				snout.WithServiceName("JSON"),
 				snout.WithEnvVarFolderLocation("./testdata/"),
@@ -289,10 +292,7 @@ func (s *snoutSuite) TestEnvVars() {
 				return nil
 			}}
 
-			_ = kernel.Bootstrap(
-				new(stubConfig),
-				snout.WithEnvVarPrefix("APP"),
-			).Initialize()
+			_ = kernel.Bootstrap(context.TODO(), new(stubConfig), snout.WithEnvVarPrefix("APP")).Initialize()
 
 			s.Run("Then all values are present", func() {
 				config := <-cfgChan

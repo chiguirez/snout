@@ -3,7 +3,7 @@ package snout_test
 import (
 	"context"
 
-	"github.com/chiguirez/snout"
+	"github.com/chiguirez/snout/v2"
 )
 
 func ExampleSnout() {
@@ -30,9 +30,7 @@ func ExampleSnout() {
 	}
 
 	// Pass a pointer to config to the kernel for it to be able to deserialize
-	kernelBootstrap := kernel.Bootstrap(
-		new(Config),
-	)
+	kernelBootstrap := kernel.Bootstrap(context.Background(), new(Config))
 
 	// Initialize your app and handle any error coming from it
 	if err := kernelBootstrap.Initialize(); err != nil {
@@ -66,10 +64,7 @@ func ExampleWithEnvVarFolderLocation() {
 	}
 
 	// Pass a pointer to config to the kernel for it to be able to deserialize
-	kernelBootstrap := kernel.Bootstrap(
-		new(Config),
-		snout.WithEnvVarFolderLocation("/etc/config/"),
-	)
+	kernelBootstrap := kernel.Bootstrap(context.Background(), new(Config), snout.WithEnvVarFolderLocation("/etc/config/"))
 
 	// Initialize your app and handle any error coming from it
 	if err := kernelBootstrap.Initialize(); err != nil {
@@ -103,10 +98,7 @@ func ExampleWithEnvVarPrefix() {
 	}
 
 	// Pass a pointer to config to the kernel for it to be able to deserialize
-	kernelBootstrap := kernel.Bootstrap(
-		new(Config),
-		snout.WithEnvVarPrefix("APP"),
-	)
+	kernelBootstrap := kernel.Bootstrap(context.Background(), new(Config), snout.WithEnvVarPrefix("APP"))
 
 	// Initialize your app and handle any error coming from it
 	if err := kernelBootstrap.Initialize(); err != nil {
@@ -141,8 +133,9 @@ func ExampleWithServiceName() {
 
 	// Pass a pointer to config to the kernel for it to be able to deserialize
 	kernelBootstrap := kernel.Bootstrap(
+		context.Background(),
 		new(Config),
-		snout.WithServiceName("MyCustomServiceName"), // This will look up for any file under the envVarFolderLocation with this name
+		snout.WithServiceName("MyCustomServiceName"),
 	)
 
 	// Initialize your app and handle any error coming from it

@@ -1,4 +1,4 @@
-module github.com/chiguirez/snout
+module github.com/chiguirez/snout/v2
 
 require (
 	github.com/mitchellh/mapstructure v1.1.2

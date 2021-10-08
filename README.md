@@ -11,6 +11,7 @@ func main() {
 		RunE: Run,
 	}
 	kernelBootstrap := kernel.Bootstrap(
+	    context.Background(),
 		new(Config),
 	)
 	if err := kernelBootstrap.Initialize(); err != nil {
