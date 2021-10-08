@@ -64,13 +64,13 @@ type Options func(kernel *kernelOptions)
 
 // Bootstrap service creating a Ctx with Signalling and fetching EnvVars from
 // env, ymal or json file, or straight from envVars from the OS.
-func (k *Kernel) Bootstrap(cfg interface{}, opts ...Options) kernelBootstrap {
+func (k *Kernel) Bootstrap(ctx context.Context, cfg interface{}, opts ...Options) kernelBootstrap {
 	krnlOpt := newKernelOptions()
 	for _, o := range opts {
 		o(krnlOpt)
 	}
 
-	ctx := k.getSignallingContext()
+	ctx = signallingContext(ctx)
 
 	k.varFetching(cfg, krnlOpt)
 
@@ -143,8 +143,8 @@ func unmarshalWithStructTag(tag string) viper.DecoderConfigOption {
 	}
 }
 
-func (k Kernel) getSignallingContext() context.Context {
-	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+func signallingContext(ctx context.Context) context.Context {
+	ctx, _ = signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 
 	return ctx
 }
