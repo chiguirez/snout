@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
 	"github.com/octago/sflags"
 	"github.com/octago/sflags/gen/gpflag"
@@ -64,7 +65,7 @@ func WithEnvVarFolderLocation(folderLocation string) Options {
 type Options func(kernel *kernelOptions)
 
 // Bootstrap service creating a Ctx with Signalling and fetching EnvVars from
-// env, ymal or json file, or straight from envVars from the OS.
+// env, yaml or json file, or straight from envVars from the OS.
 func (k *Kernel) Bootstrap(ctx context.Context, cfg interface{}, opts ...Options) kernelBootstrap {
 	krnlOpt := newKernelOptions()
 	for _, o := range opts {
@@ -171,10 +172,17 @@ type kernelBootstrap struct {
 	runE    interface{}
 }
 
-var ErrPanic = fmt.Errorf("panic:")
+var ErrPanic = fmt.Errorf("panic")
+var ErrValidation = fmt.Errorf("validation error")
 
 // Initialize Runs the Bootstrapped service
 func (kb kernelBootstrap) Initialize() (err error) {
+	validate := validator.New()
+
+	if err = validate.Struct(kb.cfg); err != nil {
+		return fmt.Errorf("%w:%s", ErrValidation, err.Error())
+	}
+
 	typeOf := reflect.TypeOf(kb.runE)
 	if typeOf.Kind() != reflect.Func {
 		return fmt.Errorf("%s is not a reflect.Func", reflect.TypeOf(kb.runE))
