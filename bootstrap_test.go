@@ -250,12 +250,14 @@ func (s *snoutSuite) TestJSONFile() {
 				return nil
 			}}
 
-			_ = kernel.Bootstrap(
+			err := kernel.Bootstrap(
 				context.TODO(),
 				new(stubConfig),
 				snout.WithServiceName("JSON"),
 				snout.WithEnvVarFolderLocation("./testdata/"),
 			).Initialize()
+
+			s.Require().NoError(err)
 
 			s.Run("Then all values are present", func() {
 				config := <-cfgChan
@@ -307,6 +309,85 @@ func (s *snoutSuite) TestEnvVars() {
 				s.Require().Equal(1, config.B)
 				s.Require().Equal(true, config.C)
 				s.Require().Equal("da", *config.D.A)
+				s.Require().Equal(3.1415, *config.D.B)
+				s.Require().Equal(false, *config.D.C)
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestConfigValidationFail() {
+	s.Run("Given a config Struct with snout tags and validation tags", func() {
+		type stubConfig struct {
+			A string `snout:"a"`
+			B int    `snout:"b"`
+			C bool   `snout:"c"`
+			D *struct {
+				A *string  `snout:"a" validate:"email"`
+				B *float64 `snout:"b"`
+				C *bool    `snout:"c"`
+			} `snout:"d"`
+		}
+
+		_ = os.Setenv("APP_A", "a")
+		_ = os.Setenv("APP_B", "1")
+		_ = os.Setenv("APP_C", "true")
+		_ = os.Setenv("APP_D_A", "da")
+		_ = os.Setenv("APP_D_B", "3.1415")
+		_ = os.Setenv("APP_D_C", "false")
+
+		s.Run("When Kernel is Initialized with Prefix", func() {
+			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+				return nil
+			}}
+
+			err := kernel.Bootstrap(context.TODO(), new(stubConfig), snout.WithEnvVarPrefix("APP")).Initialize()
+
+			s.Run("Then all values are present", func() {
+				s.Require().Error(err)
+				s.Require().ErrorIs(err, snout.ErrValidation)
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestConfigValidation() {
+	s.Run("Given a config Struct with snout tags and validation tags", func() {
+		type stubConfig struct {
+			A string `snout:"a"`
+			B int    `snout:"b"`
+			C bool   `snout:"c"`
+			D *struct {
+				A *string  `snout:"a" validate:"email"`
+				B *float64 `snout:"b" validate:"lte=4"`
+				C *bool    `snout:"c"`
+			} `snout:"d"`
+		}
+
+		_ = os.Setenv("APP_A", "a")
+		_ = os.Setenv("APP_B", "1")
+		_ = os.Setenv("APP_C", "true")
+		_ = os.Setenv("APP_D_A", "da@da.da")
+		_ = os.Setenv("APP_D_B", "3.1415")
+		_ = os.Setenv("APP_D_C", "false")
+
+		s.Run("When Kernel is Initialized with Prefix", func() {
+			cfgChan := make(chan stubConfig, 1)
+
+			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+				cfgChan <- config
+				return nil
+			}}
+
+			err := kernel.Bootstrap(context.TODO(), new(stubConfig), snout.WithEnvVarPrefix("APP")).Initialize()
+			s.Require().NoError(err)
+
+			s.Run("Then all values are present", func() {
+				config := <-cfgChan
+				s.Require().Equal("a", config.A)
+				s.Require().Equal(1, config.B)
+				s.Require().Equal(true, config.C)
+				s.Require().Equal("da@da.da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
 				s.Require().Equal(false, *config.D.C)
 			})

@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/mitchellh/mapstructure"
 	"github.com/octago/sflags"
 	"github.com/octago/sflags/gen/gpflag"
@@ -172,9 +173,16 @@ type kernelBootstrap struct {
 }
 
 var ErrPanic = fmt.Errorf("panic:")
+var ErrValidation = fmt.Errorf("validation error:")
 
 // Initialize Runs the Bootstrapped service
 func (kb kernelBootstrap) Initialize() (err error) {
+	validate := validator.New()
+
+	if err = validate.Struct(kb.cfg); err != nil {
+		return fmt.Errorf("%w %s", ErrValidation, err.Error())
+	}
+
 	typeOf := reflect.TypeOf(kb.runE)
 	if typeOf.Kind() != reflect.Func {
 		return fmt.Errorf("%s is not a reflect.Func", reflect.TypeOf(kb.runE))
