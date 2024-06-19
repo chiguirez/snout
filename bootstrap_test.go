@@ -3,11 +3,11 @@ package snout_test
 import (
 	"context"
 	"fmt"
+	"github.com/chiguirez/snout/v3"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/chiguirez/snout/v2"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -17,6 +17,7 @@ type snoutSuite struct {
 
 func TestSnout(t *testing.T) {
 	suite.Run(t, new(snoutSuite))
+	t.Parallel()
 }
 
 func (s *snoutSuite) TestDefaultTags() {
@@ -35,21 +36,22 @@ func (s *snoutSuite) TestDefaultTags() {
 		s.Run("When Kernel Initialized", func() {
 			cfgChan := make(chan stubConfig, 1)
 
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(_ context.Context, config stubConfig) error {
 				cfgChan <- config
+
 				return nil
 			}}
 
-			_ = kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
+			_ = kernel.Bootstrap(context.TODO()).Initialize()
 
 			s.Run("Then all values are present", func() {
 				config := <-cfgChan
 				s.Require().Equal("a", config.A)
 				s.Require().Equal(1, config.B)
-				s.Require().Equal(true, config.C)
+				s.Require().True(config.C)
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
-				s.Require().Equal(false, *config.D.C)
+				s.Require().False(*config.D.C)
 			})
 		})
 	})
@@ -69,16 +71,15 @@ func (s *snoutSuite) TestErrPanic() {
 		}
 
 		s.Run("When Kernel Initialized", func() {
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
 				panic(fmt.Errorf("/!\\"))
 			}}
 
-			err := kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
+			err := kernel.Bootstrap(context.TODO()).Initialize()
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
 				s.Require().ErrorIs(err, snout.ErrPanic)
-
 			})
 		})
 	})
@@ -98,16 +99,15 @@ func (s *snoutSuite) TestStringPanic() {
 		}
 
 		s.Run("When Kernel Initialized", func() {
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
 				panic("/!\\")
 			}}
 
-			err := kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
+			err := kernel.Bootstrap(context.TODO()).Initialize()
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
 				s.Require().ErrorIs(err, snout.ErrPanic)
-
 			})
 		})
 	})
@@ -127,16 +127,15 @@ func (s *snoutSuite) TestAnyPanic() {
 		}
 
 		s.Run("When Kernel Initialized", func() {
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
 				panic(false)
 			}}
 
-			err := kernel.Bootstrap(context.TODO(), new(stubConfig)).Initialize()
+			err := kernel.Bootstrap(context.TODO()).Initialize()
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
 				s.Require().ErrorIs(err, snout.ErrPanic)
-
 			})
 		})
 	})
@@ -159,14 +158,14 @@ func (s *snoutSuite) TestENVFile() {
 		s.Run("When Kernel is Initialized", func() {
 			cfgChan := make(chan stubConfig, 1)
 
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(_ context.Context, config stubConfig) error {
 				cfgChan <- config
+
 				return nil
 			}}
 
 			_ = kernel.Bootstrap(
 				context.TODO(),
-				new(stubConfig),
 				snout.WithServiceName("ENV"),
 				snout.WithEnvVarFolderLocation("./testdata/"),
 			).Initialize()
@@ -175,10 +174,10 @@ func (s *snoutSuite) TestENVFile() {
 				config := <-cfgChan
 				s.Require().Equal("a", config.A)
 				s.Require().Equal(1, config.B)
-				s.Require().Equal(true, config.C)
+				s.Require().True(config.C)
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
-				s.Require().Equal(false, *config.D.C)
+				s.Require().False(*config.D.C)
 				s.Require().Equal(30*time.Minute, config.E)
 			})
 		})
@@ -202,14 +201,14 @@ func (s *snoutSuite) TestYAMLFile() {
 		s.Run("When Kernel is Initialized", func() {
 			cfgChan := make(chan stubConfig, 1)
 
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(_ context.Context, config stubConfig) error {
 				cfgChan <- config
+
 				return nil
 			}}
 
 			_ = kernel.Bootstrap(
 				context.TODO(),
-				new(stubConfig),
 				snout.WithServiceName("YAML"),
 				snout.WithEnvVarFolderLocation("./testdata/"),
 			).Initialize()
@@ -218,10 +217,10 @@ func (s *snoutSuite) TestYAMLFile() {
 				config := <-cfgChan
 				s.Require().Equal("a", config.A)
 				s.Require().Equal(1, config.B)
-				s.Require().Equal(true, config.C)
+				s.Require().True(config.C)
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
-				s.Require().Equal(false, *config.D.C)
+				s.Require().False(*config.D.C)
 				s.Require().Equal(30*time.Minute, config.E)
 			})
 		})
@@ -245,14 +244,14 @@ func (s *snoutSuite) TestJSONFile() {
 		s.Run("When Kernel is Initialized", func() {
 			cfgChan := make(chan stubConfig, 1)
 
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(_ context.Context, config stubConfig) error {
 				cfgChan <- config
+
 				return nil
 			}}
 
 			err := kernel.Bootstrap(
 				context.TODO(),
-				new(stubConfig),
 				snout.WithServiceName("JSON"),
 				snout.WithEnvVarFolderLocation("./testdata/"),
 			).Initialize()
@@ -263,10 +262,10 @@ func (s *snoutSuite) TestJSONFile() {
 				config := <-cfgChan
 				s.Require().Equal("a", config.A)
 				s.Require().Equal(1, config.B)
-				s.Require().Equal(true, config.C)
+				s.Require().True(config.C)
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
-				s.Require().Equal(false, *config.D.C)
+				s.Require().False(*config.D.C)
 				s.Require().Equal(30*time.Minute, config.E)
 			})
 		})
@@ -296,21 +295,22 @@ func (s *snoutSuite) TestEnvVars() {
 		s.Run("When Kernel is Initialized with Prefix", func() {
 			cfgChan := make(chan stubConfig, 1)
 
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(_ context.Context, config stubConfig) error {
 				cfgChan <- config
+
 				return nil
 			}}
 
-			_ = kernel.Bootstrap(context.TODO(), new(stubConfig), snout.WithEnvVarPrefix("APP")).Initialize()
+			_ = kernel.Bootstrap(context.TODO(), snout.WithEnvVarPrefix("APP")).Initialize()
 
 			s.Run("Then all values are present", func() {
 				config := <-cfgChan
 				s.Require().Equal("a", config.A)
 				s.Require().Equal(1, config.B)
-				s.Require().Equal(true, config.C)
+				s.Require().True(config.C)
 				s.Require().Equal("da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
-				s.Require().Equal(false, *config.D.C)
+				s.Require().False(*config.D.C)
 			})
 		})
 	})
@@ -337,11 +337,11 @@ func (s *snoutSuite) TestConfigValidationFail() {
 		_ = os.Setenv("APP_D_C", "false")
 
 		s.Run("When Kernel is Initialized with Prefix", func() {
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
 				return nil
 			}}
 
-			err := kernel.Bootstrap(context.TODO(), new(stubConfig), snout.WithEnvVarPrefix("APP")).Initialize()
+			err := kernel.Bootstrap(context.TODO(), snout.WithEnvVarPrefix("APP")).Initialize()
 
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
@@ -374,22 +374,23 @@ func (s *snoutSuite) TestConfigValidation() {
 		s.Run("When Kernel is Initialized with Prefix", func() {
 			cfgChan := make(chan stubConfig, 1)
 
-			kernel := snout.Kernel{RunE: func(ctx context.Context, config stubConfig) error {
+			kernel := snout.Kernel[stubConfig]{RunE: func(_ context.Context, config stubConfig) error {
 				cfgChan <- config
+
 				return nil
 			}}
 
-			err := kernel.Bootstrap(context.TODO(), new(stubConfig), snout.WithEnvVarPrefix("APP")).Initialize()
+			err := kernel.Bootstrap(context.TODO(), snout.WithEnvVarPrefix("APP")).Initialize()
 			s.Require().NoError(err)
 
 			s.Run("Then all values are present", func() {
 				config := <-cfgChan
 				s.Require().Equal("a", config.A)
 				s.Require().Equal(1, config.B)
-				s.Require().Equal(true, config.C)
+				s.Require().True(config.C)
 				s.Require().Equal("da@da.da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
-				s.Require().Equal(false, *config.D.C)
+				s.Require().False(*config.D.C)
 			})
 		})
 	})

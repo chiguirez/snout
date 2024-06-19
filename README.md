@@ -7,12 +7,11 @@ Bootstrap package for building Services in Go, Handle Signaling and Config comin
 
 
 func main() {
-	kernel := snout.Kernel{
+	kernel := snout.Kernel[Config]{
 		RunE: Run,
 	}
 	kernelBootstrap := kernel.Bootstrap(
 	    context.Background(),
-		new(Config),
 	)
 	if err := kernelBootstrap.Initialize(); err != nil {
 		if err != context.Canceled {
