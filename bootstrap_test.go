@@ -57,90 +57,6 @@ func (s *snoutSuite) TestDefaultTags() {
 	})
 }
 
-func (s *snoutSuite) TestErrPanic() {
-	s.Run("Given a config Struct with snout tags and default values", func() {
-		type stubConfig struct {
-			A string `snout:"a" default:"a"`
-			B int    `snout:"b" default:"1"`
-			C bool   `snout:"c" default:"true"`
-			D *struct {
-				A *string  `snout:"a" default:"da"`
-				B *float64 `snout:"b" default:"3.1415"`
-				C *bool    `snout:"c" default:"false"`
-			} `snout:"d"`
-		}
-
-		s.Run("When Kernel Initialized", func() {
-			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
-				panic(fmt.Errorf("/!\\"))
-			}}
-
-			err := kernel.Bootstrap(context.TODO()).Initialize()
-
-			s.Run("Then all values are present", func() {
-				s.Require().Error(err)
-				s.Require().ErrorIs(err, snout.ErrPanic)
-			})
-		})
-	})
-}
-
-func (s *snoutSuite) TestStringPanic() {
-	s.Run("Given a config Struct with snout tags and default values", func() {
-		type stubConfig struct {
-			A string `snout:"a" default:"a"`
-			B int    `snout:"b" default:"1"`
-			C bool   `snout:"c" default:"true"`
-			D *struct {
-				A *string  `snout:"a" default:"da"`
-				B *float64 `snout:"b" default:"3.1415"`
-				C *bool    `snout:"c" default:"false"`
-			} `snout:"d"`
-		}
-
-		s.Run("When Kernel Initialized", func() {
-			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
-				panic("/!\\")
-			}}
-
-			err := kernel.Bootstrap(context.TODO()).Initialize()
-
-			s.Run("Then all values are present", func() {
-				s.Require().Error(err)
-				s.Require().ErrorIs(err, snout.ErrPanic)
-			})
-		})
-	})
-}
-
-func (s *snoutSuite) TestAnyPanic() {
-	s.Run("Given a config Struct with snout tags and default values", func() {
-		type stubConfig struct {
-			A string `snout:"a" default:"a"`
-			B int    `snout:"b" default:"1"`
-			C bool   `snout:"c" default:"true"`
-			D *struct {
-				A *string  `snout:"a" default:"da"`
-				B *float64 `snout:"b" default:"3.1415"`
-				C *bool    `snout:"c" default:"false"`
-			} `snout:"d"`
-		}
-
-		s.Run("When Kernel Initialized", func() {
-			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
-				panic(false)
-			}}
-
-			err := kernel.Bootstrap(context.TODO()).Initialize()
-
-			s.Run("Then all values are present", func() {
-				s.Require().Error(err)
-				s.Require().ErrorIs(err, snout.ErrPanic)
-			})
-		})
-	})
-}
-
 func (s *snoutSuite) TestENVFile() {
 	s.Run("Given a config Struct with snout tags ENV file", func() {
 		type stubConfig struct {
@@ -391,6 +307,90 @@ func (s *snoutSuite) TestConfigValidation() {
 				s.Require().Equal("da@da.da", *config.D.A)
 				s.Require().Equal(3.1415, *config.D.B)
 				s.Require().False(*config.D.C)
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestErrPanic() {
+	s.Run("Given a config Struct with snout tags and default values", func() {
+		type stubConfig struct {
+			A string `snout:"a" default:"a"`
+			B int    `snout:"b" default:"1"`
+			C bool   `snout:"c" default:"true"`
+			D *struct {
+				A *string  `snout:"a" default:"da"`
+				B *float64 `snout:"b" default:"3.1415"`
+				C *bool    `snout:"c" default:"false"`
+			} `snout:"d"`
+		}
+
+		s.Run("When Kernel Initialized and Run func panic with error", func() {
+			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
+				panic(fmt.Errorf("/!\\"))
+			}}
+
+			err := kernel.Bootstrap(context.TODO()).Initialize()
+
+			s.Run("Then all values are present", func() {
+				s.Require().Error(err)
+				s.Require().ErrorIs(err, snout.ErrPanic)
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestStringPanic() {
+	s.Run("Given a config Struct with snout tags and default values", func() {
+		type stubConfig struct {
+			A string `snout:"a" default:"a"`
+			B int    `snout:"b" default:"1"`
+			C bool   `snout:"c" default:"true"`
+			D *struct {
+				A *string  `snout:"a" default:"da"`
+				B *float64 `snout:"b" default:"3.1415"`
+				C *bool    `snout:"c" default:"false"`
+			} `snout:"d"`
+		}
+
+		s.Run("When Kernel Initialized and Run func panic with string", func() {
+			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
+				panic("/!\\")
+			}}
+
+			err := kernel.Bootstrap(context.TODO()).Initialize()
+
+			s.Run("Then all values are present", func() {
+				s.Require().Error(err)
+				s.Require().ErrorIs(err, snout.ErrPanic)
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestBooleanPanic() {
+	s.Run("Given a config Struct with snout tags and default values", func() {
+		type stubConfig struct {
+			A string `snout:"a" default:"a"`
+			B int    `snout:"b" default:"1"`
+			C bool   `snout:"c" default:"true"`
+			D *struct {
+				A *string  `snout:"a" default:"da"`
+				B *float64 `snout:"b" default:"3.1415"`
+				C *bool    `snout:"c" default:"false"`
+			} `snout:"d"`
+		}
+
+		s.Run("When Kernel Initialized and Run func panic with boolean", func() {
+			kernel := snout.Kernel[stubConfig]{RunE: func(context.Context, stubConfig) error {
+				panic(false)
+			}}
+
+			err := kernel.Bootstrap(context.TODO()).Initialize()
+
+			s.Run("Then all values are present", func() {
+				s.Require().Error(err)
+				s.Require().ErrorIs(err, snout.ErrPanic)
 			})
 		})
 	})
