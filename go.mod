@@ -1,5 +1,7 @@
 module github.com/chiguirez/snout/v3
 
+go 1.24.3
+
 require (
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/mitchellh/mapstructure v1.5.0
@@ -36,5 +38,3 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-go 1.18
