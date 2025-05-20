@@ -25,9 +25,10 @@ var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSou
 // ServiceConfig is a generic type for service configuration.
 type ServiceConfig any
 
-// Kernel represents a service kernel with a run function.
+// Kernel represents a service kernel with run and shutdown functions.
 type Kernel[T ServiceConfig] struct {
-	RunE func(ctx context.Context, cfg T) error
+	RunE     func(ctx context.Context, cfg T) error
+	Shutdown func(ctx context.Context) error
 }
 
 // Env represents the environment configuration.
@@ -84,20 +85,22 @@ func (k *Kernel[T]) Bootstrap(ctx context.Context, opts ...Options) KernelBootst
 		opt(kernelOpts)
 	}
 
-	ctx = setUpSignalHandling(ctx)
+	ctx, cancel := setUpSignalHandling(ctx, k)
 	cfg := k.fetchVars(kernelOpts)
 
-	return KernelBootstrap[T]{ctx, cfg, k.RunE}
+	return KernelBootstrap[T]{ctx, cfg, k.RunE, k.Shutdown, cancel}
 }
 
-// KernelBootstrap holds the context, configuration, and run function for the kernel.
+// KernelBootstrap holds the context, configuration, and run/shutdown functions for the kernel.
 type KernelBootstrap[T ServiceConfig] struct {
-	context context.Context
-	cfg     T
-	runE    func(ctx context.Context, cfg T) error
+	context  context.Context
+	cfg      T
+	runE     func(ctx context.Context, cfg T) error
+	shutdown func(ctx context.Context) error
+	cancel   context.CancelFunc
 }
 
-// Initialize validates the configuration and runs the kernel.
+// Initialize validates the configuration, runs the kernel, and handles shutdown.
 func (kb KernelBootstrap[T]) Initialize() (err error) {
 	validate := validator.New()
 
@@ -118,7 +121,19 @@ func (kb KernelBootstrap[T]) Initialize() (err error) {
 		}
 	}()
 
-	return kb.runE(kb.context, kb.cfg)
+	// Run the main function
+	if err = kb.runE(kb.context, kb.cfg); err != nil {
+		return err
+	}
+
+	// Call the shutdown function if defined
+	if kb.shutdown != nil {
+		if shutdownErr := kb.shutdown(kb.context); shutdownErr != nil {
+			return shutdownErr
+		}
+	}
+
+	return nil
 }
 
 // ErrPanic is an error indicating a panic occurred.
@@ -161,11 +176,21 @@ func (k *Kernel[T]) fetchVars(options *KernelOptions) T {
 	return cfg
 }
 
-// setUpSignalHandling sets up a context with signal notifications.
-func setUpSignalHandling(ctx context.Context) context.Context {
-	ctx, _ = signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+// setUpSignalHandling sets up a context with signal notifications and handles shutdown.
+func setUpSignalHandling(ctx context.Context, kernel any) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
 
-	return ctx
+	go func() {
+		<-signals
+		if k, ok := kernel.(*Kernel[any]); ok && k.Shutdown != nil {
+			_ = k.Shutdown(ctx) // Call Shutdown if defined
+		}
+		cancel()
+	}()
+
+	return ctx, cancel
 }
 
 // setDefaultValues sets default values recursively for configuration fields.

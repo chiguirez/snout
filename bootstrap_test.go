@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chiguirez/snout/v3"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -391,6 +392,42 @@ func (s *snoutSuite) TestBooleanPanic() {
 			s.Run("Then all values are present", func() {
 				s.Require().Error(err)
 				s.Require().ErrorIs(err, snout.ErrPanic)
+			})
+		})
+	})
+}
+
+func (s *snoutSuite) TestKernelWithShutdown() {
+	s.Run("Given a Kernel with a Shutdown function", func() {
+		shutdownCalled := false
+
+		kernel := snout.Kernel[struct{}]{
+			RunE: func(ctx context.Context, _ struct{}) error {
+				<-ctx.Done()
+				return nil
+			},
+			Shutdown: func(ctx context.Context) error {
+				shutdownCalled = true
+				return nil
+			},
+		}
+
+		s.Run("When a termination signal is sent", func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			go func() {
+				// Simulate sending a SIGTERM signal
+				time.Sleep(100 * time.Millisecond)
+				p, _ := os.FindProcess(os.Getpid())
+				_ = p.Signal(syscall.SIGTERM)
+			}()
+
+			err := kernel.Bootstrap(ctx).Initialize()
+
+			s.Run("Then the Shutdown function is called", func() {
+				s.Require().NoError(err)
+				s.Require().True(shutdownCalled)
 			})
 		})
 	})

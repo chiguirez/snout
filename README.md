@@ -4,11 +4,10 @@ Bootstrap package for building Services in Go, Handle Signaling and Config comin
 ## Example
 
 ```golang
-
-
 func main() {
 	kernel := snout.Kernel[Config]{
 		RunE: Run,
+		Shutdown: Shutdown,
 	}
 	kernelBootstrap := kernel.Bootstrap(
 	    context.Background(),
@@ -31,9 +30,13 @@ type Config struct {
 	} `snout:"app"`
 }
 
-func Run(ctx context.Context, cfg Config) error{
+func Run(ctx context.Context, cfg Config) error {
   //
   // ..  
   //
+}
+
+func Shutdown(ctx context.Context) error {
+	// shutdown stuff
 }
 ```
